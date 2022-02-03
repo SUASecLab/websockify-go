@@ -1,0 +1,10 @@
+services:
+  websockify:
+    build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "../path/to/webroot:/web"
+    ports:
+      - "6080:6080"
+    command: "websockify -t host.docker.internal:5900 -web=/web"
