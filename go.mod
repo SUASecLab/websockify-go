@@ -1,7 +1,5 @@
-module github.com/novnc/websockify-other/websockify
+module github.com/SUASecLab/websockify-go/websockify
 
-go 1.16
+go 1.17
 
-require (
-    github.com/gorilla/websocket v1.4.2
-)
+require github.com/gorilla/websocket v1.4.2
