@@ -35,7 +35,7 @@ func init() {
 }
 
 func setHttpSocket(httpPort *int) {
-	httpSocket = "127.0.0.1:" + strconv.Itoa(*httpPort)
+	httpSocket = ":" + strconv.Itoa(*httpPort)
 }
 
 func main() {
@@ -59,7 +59,7 @@ func main() {
 			http.Handle("/"+forwarding.WebSocket, handler)
 		}
 	} else {
-		log.Printf("Serving WS of %s at %s", *tcpSocket, httpSocket)
+		log.Printf("Serving WS of %s at %s/websockify", *tcpSocket, httpSocket)
 		handler := &tcpHandler{
 			tcpSocket: *tcpSocket,
 		}
