@@ -8,18 +8,16 @@ package main
 import (
 	"flag"
 	"log"
-	"net"
 	"net/http"
 	"os"
-	"time"
-
-	"github.com/gorilla/websocket"
+	"strconv"
 )
 
 var (
-	sourceAddr *string
-	targetAddr *string
-	web        *string
+	configurationFile *string
+	httpSocket        string
+	tcpSocket         *string
+	webRoot           *string
 )
 
 func init() {
@@ -27,85 +25,17 @@ func init() {
 	if err != nil {
 		log.Printf("Could net get current working directory: %s", err)
 	}
-	sourceAddr = flag.String("l", "127.0.0.1:8080", "http service address")
-	targetAddr = flag.String("t", "127.0.0.1:5900", "vnc service address")
-	web = flag.String("web", path, "web root folder")
+
+	configurationFile = flag.String("f", "", "configuration file")
+	httpPort := flag.Int("l", 6080, "http service port")
+	tcpSocket = flag.String("t", "127.0.0.1:5900", "tcp service address")
+	webRoot = flag.String("web", path, "web root folder")
+
+	setHttpSocket(httpPort)
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-func forwardTcp(wsConn *websocket.Conn, conn net.Conn) {
-	var tcpBuffer [1024]byte
-	defer func() {
-		if conn != nil {
-			conn.Close()
-		}
-		if wsConn != nil {
-			wsConn.Close()
-		}
-	}()
-	for {
-		if (conn == nil) || (wsConn == nil) {
-			return
-		}
-		n, err := conn.Read(tcpBuffer[0:])
-		if err != nil {
-			log.Printf("%s: reading from TCP failed: %s", time.Now().Format(time.Stamp), err)
-			return
-		} else {
-			if err := wsConn.WriteMessage(websocket.BinaryMessage, tcpBuffer[0:n]); err != nil {
-				log.Printf("%s: writing to WS failed: %s", time.Now().Format(time.Stamp), err)
-			}
-		}
-	}
-}
-
-func forwardWeb(wsConn *websocket.Conn, conn net.Conn) {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Printf("%s: reading from WS failed: %s", time.Now().Format(time.Stamp), err)
-		}
-		if conn != nil {
-			conn.Close()
-		}
-		if wsConn != nil {
-			wsConn.Close()
-		}
-	}()
-	for {
-		if (conn == nil) || (wsConn == nil) {
-			return
-		}
-
-		_, buffer, err := wsConn.ReadMessage()
-		if err == nil {
-			if _, err := conn.Write(buffer); err != nil {
-				log.Printf("%s: writing to TCP failed: %s", time.Now().Format(time.Stamp), err)
-			}
-		}
-	}
-}
-
-func serveWs(w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("%s: failed to upgrade to WS: %s", time.Now().Format(time.Stamp), err)
-		return
-	}
-
-	vnc, err := net.Dial("tcp", *targetAddr)
-	if err != nil {
-		log.Printf("%s: failed to bind to the VNC Server: %s", time.Now().Format(time.Stamp), err)
-	}
-
-	go forwardTcp(ws, vnc)
-	go forwardWeb(ws, vnc)
+func setHttpSocket(httpPort *int) {
+	httpSocket = "127.0.0.1:" + strconv.Itoa(*httpPort)
 }
 
 func main() {
@@ -116,11 +46,29 @@ func main() {
 		log.Println(err)
 	}
 
-	if *web != path {
-		log.Printf("Serving %s at %s", *web, *sourceAddr)
-		http.Handle("/", http.FileServer(http.Dir(*web)))
+	if len(*configurationFile) > 0 {
+		conf := readConfigurationFile(*configurationFile)
+		setHttpSocket(&conf.HttpPort)
+		*webRoot = conf.WebRoot
+
+		for _, forwarding := range conf.Forwardings {
+			log.Printf("Serving WS of %s at %s", forwarding.TcpSocket, forwarding.WebSocket)
+			handler := &tcpHandler{
+				tcpSocket: forwarding.TcpSocket,
+			}
+			http.Handle("/"+forwarding.WebSocket, handler)
+		}
+	} else {
+		log.Printf("Serving WS of %s at %s", *tcpSocket, httpSocket)
+		handler := &tcpHandler{
+			tcpSocket: *tcpSocket,
+		}
+		http.Handle("/websockify", handler)
 	}
-	log.Printf("Serving WS of %s at %s", *targetAddr, *sourceAddr)
-	http.HandleFunc("/websockify", serveWs)
-	log.Fatal(http.ListenAndServe(*sourceAddr, nil))
+
+	if *webRoot != path && len(*webRoot) > 0 {
+		log.Printf("Serving %s at %s", *webRoot, httpSocket)
+		http.Handle("/", http.FileServer(http.Dir(*webRoot)))
+	}
+	log.Fatal(http.ListenAndServe(httpSocket, nil))
 }

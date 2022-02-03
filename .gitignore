@@ -1,0 +1,5 @@
+# Websockify binary
+websockify
+
+# JSON configuration files
+*.json

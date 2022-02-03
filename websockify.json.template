@@ -1,0 +1,10 @@
+{
+	"httpPort": 6080,
+	"webRoot" : "/path/to/webroot",
+	"forwardings": [
+	  {
+		  "tcpSocket": "127.0.0.1:5900",
+	  	"webSocket": "websockify"
+	  }
+	]
+}
