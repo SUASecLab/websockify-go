@@ -38,6 +38,14 @@ func setHttpSocket(httpPort *int) {
 	httpSocket = ":" + strconv.Itoa(*httpPort)
 }
 
+func addHeaders(fs http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+
+		fs.ServeHTTP(w, r)
+	}
+}
+
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
@@ -68,7 +76,11 @@ func main() {
 
 	if *webRoot != path && len(*webRoot) > 0 {
 		log.Printf("Serving %s at %s", *webRoot, httpSocket)
-		http.Handle("/", http.FileServer(http.Dir(*webRoot)))
+
+		// serve files with added header
+		// see https://dev.to/mecode4food/serving-static-files-with-custom-headers-using-golang-426h
+		fs := http.FileServer(http.Dir(*webRoot))
+		http.Handle("/", addHeaders(fs))
 	}
 	log.Fatal(http.ListenAndServe(httpSocket, nil))
 }
