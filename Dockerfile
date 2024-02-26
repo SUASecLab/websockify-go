@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS golang-builder
+FROM golang:1.22-alpine AS golang-builder
 
 RUN addgroup -S websockify && adduser -S websockify -G websockify
 
