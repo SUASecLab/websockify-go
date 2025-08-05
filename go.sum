@@ -1,2 +1,6 @@
+github.com/SUASecLab/workadventure_admin_extensions v0.0.3 h1:GJfp7kpP5kX9vQBVMRJ1OKbeiz9BQz3VfZGzHWjmJkc=
+github.com/SUASecLab/workadventure_admin_extensions v0.0.3/go.mod h1:HoDMdNej1jN/rOpP9fUm5Wlg0tEfBTIHLpTO4etq6EU=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/kataras/jwt v0.1.16 h1:o5JU6p3X/sX3NRK9ElevhzGFSM24La4eNtg/7+AVAbA=
+github.com/kataras/jwt v0.1.16/go.mod h1:Bm904136cUXn2ygej1JTw4rlosalt3pln/UGjXs/QkU=

@@ -7,8 +7,10 @@ import (
 )
 
 type Forwarding struct {
-	TcpSocket string `json:"tcpSocket"`
-	WebSocket string `json:"webSocket"`
+	TcpSocket  string   `json:"tcpSocket"`
+	WebSocket  string   `json:"webSocket"`
+	Name       string   `json:"name"`
+	Operations []string `json:"operations"`
 }
 
 type Configuration struct {

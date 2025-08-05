@@ -1,0 +1,83 @@
+// Import all of Bootstrap’s CSS
+@import "bootstrap/scss/bootstrap";
+
+body {
+    margin: 0;
+    background-color: #e9e9e9;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+html {
+    height: 100%;
+}
+
+#screen {
+    flex: 1;
+    /* fill remaining space */
+    overflow: hidden;
+    z-index: 0;
+}
+
+#status {
+    position: fixed;
+    z-index: 1;
+    bottom: 1rem;
+    right: 1rem;
+}
+
+#alert {
+    display: none;
+    margin: 3rem;
+}
+
+#restartModalButton {
+    visibility: hidden;
+}
+
+/* navbar animations */
+.navbar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    transform: translateY(-95%);
+    transition: transform 1s ease-out;
+    z-index: 3;
+}
+
+.navbar-hover-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    z-index: 2;
+}
+
+/* show navbar when hovering */
+.navbar-hover-area:hover+.navbar-wrapper,
+.navbar-wrapper:hover {
+    transform: translateY(0);
+}
+
+/* bootstrap overrides */
+.navbar {
+    padding: 0.25rem;
+}
+
+button {
+    margin-left: .25rem;
+    margin-right: .25rem;
+}
+
+.btn svg {
+    position: relative;
+    top: -0.125em;
+}
+
+.toast {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}

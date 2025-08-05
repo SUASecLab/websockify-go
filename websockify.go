@@ -15,9 +15,13 @@ import (
 
 var (
 	configurationFile *string
+	conf              Configuration
 	httpSocket        string
 	tcpSocket         *string
 	webRoot           *string
+
+	jwtKey     string
+	sidecarUrl string
 )
 
 func init() {
@@ -49,13 +53,18 @@ func addHeaders(fs http.Handler) http.HandlerFunc {
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
+
+	// read sidecar url and jwt key
+	sidecarUrl = os.Getenv("SIDECAR_URL")
+	jwtKey = os.Getenv("JWT_KEY")
+
 	path, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
 	}
 
 	if len(*configurationFile) > 0 {
-		conf := readConfigurationFile(*configurationFile)
+		conf = readConfigurationFile(*configurationFile)
 		setHttpSocket(&conf.HttpPort)
 		*webRoot = conf.WebRoot
 
@@ -82,5 +91,9 @@ func main() {
 		fs := http.FileServer(http.Dir(*webRoot))
 		http.Handle("/", addHeaders(fs))
 	}
+
+	// VM action handler
+	http.HandleFunc("/action", actionHandler)
+	http.HandleFunc("/actionQuery", actionQuery)
 	log.Fatal(http.ListenAndServe(httpSocket, nil))
 }
