@@ -22,11 +22,17 @@ function readQueryVariable(name, defaultVariable) {
 }
 
 // Show a status text in a toast
-function status(text, delay = 5000) {
+function status(text, delay = 5000, error=false) {
     const element = document.getElementById('status');
     var toastElement = document.createElement("div");
+
+    // Change background for error
+    var background = "text-bg-primary";
+    if (error) {
+        background = "text-bg-danger";
+    }
     toastElement.innerHTML =
-                `<div class="toast align-items-center text-bg-primary border-0 fade show" role="alert" aria-live="assertive" aria-atomic="true">
+                `<div class="toast align-items-center ${background} border-0 fade show" role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="d-flex">
                         <div class="toast-body h6">
                             ${text}
@@ -297,8 +303,8 @@ restartButton.addEventListener("click", function () {
                 window.location.reload();
             }, 10000);
         },
-        error: function (xhr, status, error) {
-            console.error("Error:", error);
+        error: function (xhr, s, err) {
+            status("Could not restart virtual machine.", 10000, true);
         }
     });
 });
