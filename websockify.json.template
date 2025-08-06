@@ -6,7 +6,8 @@
 		"tcpSocket": "127.0.0.1:5900",
 	  	"webSocket": "websockify",
 	  	"name": "websockify-vm",
-	  	"operations": ["restart"]
+	  	"operations": ["restart"],
+		"otherVMs": []
 	  }
 	]
 }
