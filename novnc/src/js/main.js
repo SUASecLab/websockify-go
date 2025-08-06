@@ -259,7 +259,7 @@ $.ajax({
         if (response) {
             try {
                 let res = JSON.parse(response);
-                if (res.actions.includes("restart")) {
+                if (res.actions && res.actions.includes("restart") && res.name && res.other) {
                     // Restart possible
                     // Construct table with VM(s)
                     const tableParent = document.getElementById("modal-body-vms");
