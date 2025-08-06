@@ -357,15 +357,6 @@ status("Hover over the blue line on top to control the virtual machine.", 20000)
 // Dark/light mode
 // ==============================================
 
-// Get currently stored theme
-let theme = localStorage.getItem("theme");
-
-// No or invalid theme stored
-if ((theme == null) || ((theme != "light") && (theme != "dark"))) {
-    theme = "dark"
-    window.localStorage.setItem("theme", theme)
-}
-
 // Get theme switch button
 const themeButton = document.getElementById("theme-switch");
 
@@ -390,13 +381,6 @@ function enableLightMode() {
         </svg>`;
 }
 
-// Set theme
-if (theme == "dark") {
-    enableDarkMode();
-} else {
-    enableLightMode();
-}
-
 // Change theme button
 themeButton.addEventListener("click", () => {
     if (document.documentElement.getAttribute("data-bs-theme") == "light") {
@@ -405,3 +389,33 @@ themeButton.addEventListener("click", () => {
         enableLightMode();
     }
 });
+
+// Get currently stored theme
+function applyCurrentMode(currentTheme) {
+    let theme = localStorage.getItem("theme");
+
+    // No or invalid theme stored
+    if ((theme == null) || ((theme != "light") && (theme != "dark"))) {
+        theme = "dark"
+        window.localStorage.setItem("theme", theme)
+    }
+
+    // No theme change
+    if (currentTheme && (theme == currentTheme)) {
+        return theme;
+    }
+
+    // Set theme
+    if (theme == "dark") {
+        enableDarkMode();
+    } else {
+        enableLightMode();
+    }
+
+    return theme;
+}
+
+var currentTheme = applyCurrentMode();
+setInterval(() => {
+    currentTheme = applyCurrentMode(currentTheme);
+}, 250);
