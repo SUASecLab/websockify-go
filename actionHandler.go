@@ -61,7 +61,9 @@ func actionQuery(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("Content-Type", "application/json")
 	jsonData, err := json.Marshal(
 		map[string]interface{}{
+			"name":    vmConf.Name,
 			"actions": vmConf.Operations,
+			"other":   vmConf.OtherVMs,
 		})
 
 	if err != nil {
@@ -78,7 +80,11 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get VM
+	// Get path
+	path := r.URL.Query().Get("path")
+	path = html.EscapeString(path)
+
+	// get vm
 	vmName := r.URL.Query().Get("vm")
 	vmName = html.EscapeString(vmName)
 
@@ -89,29 +95,35 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	// Get vm from configuration
 	var vmConf Forwarding
 	for _, vm := range conf.Forwardings {
-		if vm.WebSocket == vmName {
+		if vm.WebSocket == path {
 			vmConf = vm
 			break
 		}
 	}
 
+	// Check if the vm actually has that path
+	if vmConf.Name != vmName && !slices.Contains(vmConf.OtherVMs, vmName) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
 	// Check if this vm has a name -> important for virsh restart request
 	// len < 1 means the VM either does not exist or has no name property
-	if len(vmConf.Name) < 1 {
+	if len(vmName) < 1 {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	// Check if requested operation is allowed
 	if !slices.Contains(vmConf.Operations, operation) {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
 
 	// Generate token for websockify <-> vm-control communication
 	currentTime := time.Now().Unix()
 	communicationToken, err := jwt.Sign(jwt.HS256, []byte(jwtKey), map[string]interface{}{
-		"vm":        vmConf.Name,
+		"vm":        vmName,
 		"operation": operation,
 		"iat":       currentTime,
 		"nbf":       currentTime - 5,

@@ -63,19 +63,32 @@
 
     <!-- Restart modal -->
     <div class="modal fade" id="restartModal" tabindex="-1" aria-labelledby="restartModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h1 class="modal-title fs-5" id="restartModalLabel">Restart virtual machine?</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    If you restart the virtual machine, all currently unsaved work will be discarded.
+                    If you restart a virtual machine, all currently unsaved work on it will be discarded.
                     Make sure you saved all your data before restarting.
+                    Please note it might take a couple of minutes until all internal services offered by the virtual machine are available again.
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Virtual machine</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-body-vms">
+                            <!-- Table elements to control VMs go here -->
+                        </tbody>
+                    </table>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Do not restart</button>
-                    <button type="button" class="btn btn-danger" id="vm_restart_button">Restart</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

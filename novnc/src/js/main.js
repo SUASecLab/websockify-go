@@ -22,15 +22,29 @@ function readQueryVariable(name, defaultVariable) {
 }
 
 // Show a status text in a toast
-function status(text, delay = 5000, error = false) {
+const StatusMessageTypes = Object.freeze({
+    INFORMATION: 0,
+    WARNING: 1,
+    ERROR: 2
+});
+
+function status(text, delay = 5000, type = StatusMessageTypes.INFORMATION) {
     const element = document.getElementById('status');
     var toastElement = document.createElement("div");
 
     // Change background for error
     var background = "text-bg-primary";
-    if (error) {
-        background = "text-bg-danger";
+    switch (type) {
+        case StatusMessageTypes.WARNING:
+            background = "text-bg-warning";
+            break;
+        case StatusMessageTypes.ERROR:
+            background = "text-bg-danger";
+            break;
+        default:
+            background = "text-bg-primary";
     }
+
     toastElement.innerHTML =
         `<div class="toast align-items-center ${background} border-0 fade show" role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="d-flex">
@@ -98,9 +112,13 @@ rfb.addEventListener("connect", function (e) {
 // Disconnected from virtual machine
 rfb.addEventListener("disconnect", function (e) {
     if (e.detail.clean) {
-        status("Disconnected");
+        if (desktopName) {
+            status(`Disconnected from ${desktopName}`, 10000, StatusMessageTypes.WARNING);
+        } else {
+            status("Disconnected", 10000, StatusMessageTypes.WARNING);
+        }
     } else {
-        status("Something went wrong, connection is closed");
+        status("Something went wrong, connection is closed", 10000, StatusMessageTypes.ERROR);
 
         // Show error modal
         const modalWrapper = document.createElement("div");
@@ -235,13 +253,38 @@ $.ajax({
     type: "GET",
     data: {
         "token": readQueryVariable("token", ""),
-        "vm": readQueryVariable("path", "")
+        "vm": path
     },
     success: function (response, status, xhr) {
         if (response) {
             try {
                 let res = JSON.parse(response);
                 if (res.actions.includes("restart")) {
+                    // Restart possible
+                    // Construct table with VM(s)
+                    const tableParent = document.getElementById("modal-body-vms");
+
+                    // Add currently used VM
+                    let currentVMRow = document.createElement("tr")
+                    currentVMRow.innerHTML =
+                        `<td>${res.name}</td>
+                        <td><button type="button" class="btn btn-danger" id="vm_restart_button">Restart</button></td>`;
+                    tableParent.appendChild(currentVMRow);
+                    document.getElementById("vm_restart_button").addEventListener("click", () => { restartVM(res.name, path, true); });
+
+                    // Add other VMs
+                    if (res.other) {
+                        res.other.forEach(vm => {
+                            let additionalVMRow = document.createElement("tr")
+                            additionalVMRow.innerHTML =
+                                `<td>${vm}</td>
+                                <td><button type="button" class="btn btn-danger" id="vm_restart_button-${vm}">Restart</button></td>`;
+                            tableParent.appendChild(additionalVMRow);
+                            document.getElementById(`vm_restart_button-${vm}`).addEventListener("click", () => { restartVM(vm, path); });
+                        });
+                    }
+
+                    // Show button to restart VMs
                     document.getElementById("restartModalButton").style.visibility = "visible";
                 }
             } catch (err) {
@@ -257,57 +300,55 @@ $.ajax({
     }
 });
 
-// VM restart button
-const restartButton = document.getElementById("vm_restart_button")
-restartButton.addEventListener("click", function () {
-    // Hide modal
-    const restartModal = document.getElementById("restartModal");
-    const modal = bootstrap.Modal.getInstance(restartModal);
-    modal.hide();
-
+// VM restart function
+function restartVM(vm, path, reload = false) {
+    console.log("Requested restart of " + vm);
     $.ajax({
         url: "./action",
         type: "GET",
         data: {
             "token": readQueryVariable("token", ""),
-            "vm": readQueryVariable("path", ""),
+            "path": path,
+            "vm": vm,
             "operation": "restart"
         },
-        success: function (response, status, xhr) {
+        success: function (response, s, xhr) {
             // Restarting VM
             console.log("Restarting VM");
 
-            // Change icon of modal button
-            var restartModalButton = document.getElementById("restartModalButton");
-            restartModalButton.innerHTML =
-                `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hourglass-bottom" viewBox="0 0 16 16">
-                    <path d="M2 1.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-1v1a4.5 4.5 0 0 1-2.557 4.06c-.29.139-.443.377-.443.59v.7c0 .213.154.451.443.59A4.5 4.5 0 0 1 12.5 13v1h1a.5.5 0 0 1 0 1h-11a.5.5 0 1 1 0-1h1v-1a4.5 4.5 0 0 1 2.557-4.06c.29-.139.443-.377.443-.59v-.7c0-.213-.154-.451-.443-.59A4.5 4.5 0 0 1 3.5 3V2h-1a.5.5 0 0 1-.5-.5m2.5.5v1a3.5 3.5 0 0 0 1.989 3.158c.533.256 1.011.791 1.011 1.491v.702s.18.149.5.149.5-.15.5-.15v-.7c0-.701.478-1.236 1.011-1.492A3.5 3.5 0 0 0 11.5 3V2z"/>
-                </svg>`;
+            if (reload) {
+                // Hide modal
+                const restartModal = document.getElementById("restartModal");
+                const modal = bootstrap.Modal.getInstance(restartModal);
+                modal.hide();
 
-            // Disable modal
-            restartModalButton.setAttribute("data-bs-target", "");
+                // Show large alert as restart information
+                var alert = document.getElementById("alert")
+                alert.style.display = "block";
+                alert.innerHTML =
+                    `<div class="alert alert-primary" role="alert">
+                        Restarting ${vm}...
+                    </div>`;
 
-            // Show restart information
-            var alert = document.getElementById("alert")
-            alert.style.display = "block";
-            alert.innerHTML =
-                `<div class="alert alert-primary" role="alert">
-                    Restarting virtual machine...
-                </div>`;
+                // Hide button
+                document.getElementById("restartModalButton").style.visibility = "hidden";
 
-            // Hide RFB
-            document.getElementById("screen").innerHTML = "";
+                // Hide RFB
+                document.getElementById("screen").innerHTML = "";
 
-            // Reload after 10s
-            setTimeout(() => {
-                window.location.reload();
-            }, 10000);
+                // Reload after 10s
+                setTimeout(() => {
+                    window.location.reload();
+                }, 10000);
+            } else {
+                status(`Restarting ${vm}...`, 30000, StatusMessageTypes.WARNING);
+            }
         },
         error: function (xhr, s, err) {
-            status("Could not restart virtual machine.", 10000, true);
+            status("Could not restart virtual machine.", 10000, StatusMessageTypes.ERROR);
         }
     });
-});
+};
 
 // Show navbar hint
 status("Hover over the blue line on top to control the virtual machine.", 20000);

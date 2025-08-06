@@ -11,6 +11,7 @@ type Forwarding struct {
 	WebSocket  string   `json:"webSocket"`
 	Name       string   `json:"name"`
 	Operations []string `json:"operations"`
+	OtherVMs   []string `json:"otherVMs"`
 }
 
 type Configuration struct {
