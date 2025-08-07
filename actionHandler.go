@@ -146,6 +146,6 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Made operation request, code:", res.StatusCode)
-	body, _ := io.ReadAll(r.Body)
+	body, _ := io.ReadAll(res.Body)
 	http.Error(w, string(body), res.StatusCode)
 }
