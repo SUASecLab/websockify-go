@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"log"
 	"net/http"
 	"slices"
@@ -145,5 +146,6 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Made operation request, code:", res.StatusCode)
-	http.Error(w, http.StatusText(res.StatusCode), res.StatusCode)
+	body, _ := io.ReadAll(r.Body)
+	http.Error(w, string(body), res.StatusCode)
 }

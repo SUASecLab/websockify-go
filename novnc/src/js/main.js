@@ -347,7 +347,7 @@ function restartVM(vm, path, reload = false) {
             }
         },
         error: function (xhr, s, err) {
-            status("Could not restart virtual machine.", 10000, StatusMessageTypes.ERROR);
+            status("Could not restart virtual machine: " + xhr.responseText, 15000, StatusMessageTypes.ERROR);
         }
     });
 };
