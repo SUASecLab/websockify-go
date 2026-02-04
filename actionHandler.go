@@ -15,6 +15,7 @@ import (
 	"github.com/kataras/jwt"
 )
 
+// Authenticate requests
 func auth(w http.ResponseWriter, r *http.Request) bool {
 	// Get security token
 	token := r.URL.Query().Get("token")
@@ -24,21 +25,27 @@ func auth(w http.ResponseWriter, r *http.Request) bool {
 	validation, err := extensions.GetValidationResult("http://" + sidecarUrl +
 		"/validate?token=" + token)
 
+	// Invalid token
 	if !validation.Valid || err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return false
 	}
 
-	// Check if user is allowed noVNC
+	// Check if user is allowed to use noVNC
 	decision, err := extensions.GetAuthDecision("http://" + sidecarUrl +
 		"/auth?token=" + token + "&service=noVNC")
+
+	// Not allowed
 	if !decision.Allowed || err != nil {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return false
 	}
+
+	// Valid and allowed
 	return true
 }
 
+// Query the actions a user is allowed to perform on a certain VM
 func actionQuery(w http.ResponseWriter, r *http.Request) {
 	// Return if user is not authenticated
 	if !auth(w, r) {

@@ -20,6 +20,7 @@ type Configuration struct {
 	Forwardings []Forwarding `json:"forwardings"`
 }
 
+// Read a configuration file into a configuration struct
 func readConfigurationFile(name string) Configuration {
 	content, err := os.ReadFile(name)
 	if err != nil {
