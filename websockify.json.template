@@ -1,13 +1,37 @@
 {
-	"httpPort": 6080,
-	"webRoot" : "/path/to/webroot",
-	"forwardings": [
-	  {
-		"tcpSocket": "127.0.0.1:5900",
-	  	"webSocket": "websockify",
-	  	"name": "websockify-vm",
-	  	"operations": ["restart"],
-		"otherVMs": []
-	  }
-	]
+    "httpPort": 6080,
+    "webRoot": "/web",
+    "forwardings": [
+        {
+            "defaultVM": {
+                "tcpSocket": "192.168.178.45:5900",
+                "webSocket": "heaven",
+                "name": "Heaven"
+            },
+            "visitableVMs": [],
+            "restartableVMs": []
+        },
+        {
+            "defaultVM": {
+                "tcpSocket": "192.168.178.45:5901",
+                "webSocket": "kali",
+                "name": "Kali"
+            },
+            "visitableVMs": [],
+            "restartableVMs": ["Heaven"]
+        },
+        {
+            "defaultVM": {
+                "tcpSocket": "192.168.178.45:5902",
+                "webSocket": "lab",
+                "name": "IotLab"
+            },
+            "visitableVMs": [{
+                "tcpSocket": "192.168.178.45:5900",
+                "webSocket": "heaven",
+                "name": "Heaven"
+            }],
+            "restartableVMs": ["Kali"]
+        }
+    ]
 }
