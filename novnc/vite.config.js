@@ -1,25 +1,26 @@
-import { resolve } from 'path'
+import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import path from 'path';
 
-export default {
-  base: "./",
-  root: resolve(__dirname, 'src'),
-  build: {
-    outDir: '../dist',
+export default defineConfig({
+  plugins: [svelte()],
+  resolve: {
+    alias: {
+      $assets: path.resolve("./src/assets"),
+      $lib: path.resolve("./src/lib")
+    }
   },
-  server: {
-    port: 8080
-  },
-  // Optional: Silence Sass deprecation warnings. See note below.
+  // Silence Sass deprecation warnings.
   css: {
-     preprocessorOptions: {
-        scss: {
-          silenceDeprecations: [
-            'import',
-            'mixed-decls',
-            'color-functions',
-            'global-builtin',
-          ],
-        },
-     },
-  }
-};
+    preprocessorOptions: {
+      scss: {
+        quietDeps: true,
+        silenceDeprecations: [
+          'import',
+          'color-functions',
+          'global-builtin',
+        ],
+      },
+    },
+  },
+});

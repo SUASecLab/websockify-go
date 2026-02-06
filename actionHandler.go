@@ -46,43 +46,8 @@ func auth(w http.ResponseWriter, r *http.Request) bool {
 }
 
 // Query the actions a user is allowed to perform on a certain VM
-func actionQuery(w http.ResponseWriter, r *http.Request) {
-	// Return if user is not authenticated
-	if !auth(w, r) {
-		return
-	}
-
-	// Get VM
-	vmName := r.URL.Query().Get("vm")
-	vmName = html.EscapeString(vmName)
-
-	// Get vm from configuration
-	var vmConf Forwarding
-	for _, vm := range conf.Forwardings {
-		if vm.WebSocket == vmName {
-			vmConf = vm
-			break
-		}
-	}
-
-	// Send response
-	r.Header.Set("Content-Type", "application/json")
-	jsonData, err := json.Marshal(
-		map[string]interface{}{
-			"name":    vmConf.Name,
-			"actions": vmConf.Operations,
-			"other":   vmConf.OtherVMs,
-		})
-
-	if err != nil {
-		log.Println("Could not send operation information:", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintf(w, "%s", string(jsonData))
-}
-
-func actionHandler(w http.ResponseWriter, r *http.Request) {
+func queryWorkspace(w http.ResponseWriter, r *http.Request) {
+	// Check token
 	// Return if user is not authenticated
 	if !auth(w, r) {
 		return
@@ -92,39 +57,121 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	path = html.EscapeString(path)
 
-	// get vm
-	vmName := r.URL.Query().Get("vm")
-	vmName = html.EscapeString(vmName)
+	// Check if path has sufficient length
+	if len(path) < 1 {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
 
-	// Get operation
-	operation := r.URL.Query().Get("operation")
-	operation = html.EscapeString(operation)
-
-	// Get vm from configuration
-	var vmConf Forwarding
-	for _, vm := range conf.Forwardings {
-		if vm.WebSocket == path {
-			vmConf = vm
+	// Get workspace from configuration
+	var workspaceConfiguration *Forwarding
+	for _, workspace := range conf.Forwardings {
+		// Path will be the websocket of the default VM
+		if workspace.DefaultVM.WebSocket == path {
+			workspaceConfiguration = &workspace
 			break
 		}
 	}
 
-	// Check if the vm actually has that path
-	if vmConf.Name != vmName && !slices.Contains(vmConf.OtherVMs, vmName) {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	// Check if we got a workspace configuration
+	if workspaceConfiguration == nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	// Check if this vm has a name -> important for virsh restart request
+	// Set up restartable VMs data structure
+	var restartableVMs []string
+	restartableVMs = append(restartableVMs, workspaceConfiguration.DefaultVM.Name)    // default vm
+	restartableVMs = append(restartableVMs, workspaceConfiguration.RestartableVMs...) // the additional restartable ones
+
+	// Allow restarting visitiable VMs
+	for _, vm := range workspaceConfiguration.VisitableVMs {
+		restartableVMs = append(restartableVMs, vm.Name)
+	}
+
+	// Setup data structure of visitable VMs
+	var visitableVMs []PublicVM
+	visitableVMs = append(visitableVMs, getPublicConf(workspaceConfiguration.DefaultVM)) // default vm
+
+	// Add visitable VMs
+	for _, vm := range workspaceConfiguration.VisitableVMs {
+		visitableVMs = append(visitableVMs, getPublicConf(vm))
+	}
+
+	// Set up response
+	r.Header.Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(
+		map[string]interface{}{
+			"restartable": restartableVMs,
+			"visitable":   visitableVMs,
+		})
+
+	// Could not convert response to JSON
+	if err != nil {
+		log.Println("Could not send operation information:", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// Send response
+	fmt.Fprintf(w, "%s", string(jsonData))
+}
+
+// Checks if a VM with a certain name is present in a slice of VM
+func vmListContainsName(vms []VM, name string) bool {
+	for _, vm := range vms {
+		if vm.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func performRestart(w http.ResponseWriter, r *http.Request) {
+	// Check token and permissions
+	// Return if user is not authenticated
+	if !auth(w, r) {
+		return
+	}
+
+	// Get path (= WebSocket of default VM)
+	path := r.URL.Query().Get("path")
+	path = html.EscapeString(path)
+
+	// Get VM parameter (the VM to be restarted)
+	vmName := r.URL.Query().Get("vm")
+	vmName = html.EscapeString(vmName)
+
+	// Check if this vm has a name
+	// -> important for our search here and the virsh restart request
 	// len < 1 means the VM either does not exist or has no name property
 	if len(vmName) < 1 {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	// Check if requested operation is allowed
-	if !slices.Contains(vmConf.Operations, operation) {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+	// Get VM fordwardings from configuration
+	// (can be default VM, visitable or restartable,
+	//  but the path to check against is the websocket one from the default VM)
+	var workspaceConfiguration *Forwarding
+	for _, workspace := range conf.Forwardings {
+		if workspace.DefaultVM.WebSocket == path {
+			workspaceConfiguration = &workspace
+			break
+		}
+	}
+
+	// Check if we got a workspace configuration
+	if workspaceConfiguration == nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	// Check if the name of the VM occurs in the configuration
+	if !(workspaceConfiguration.DefaultVM.Name == vmName ||
+		slices.Contains(workspaceConfiguration.RestartableVMs, vmName) ||
+		vmListContainsName(workspaceConfiguration.VisitableVMs, vmName)) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -132,7 +179,7 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	currentTime := time.Now().Unix()
 	communicationToken, err := jwt.Sign(jwt.HS256, []byte(jwtKey), map[string]interface{}{
 		"vm":        vmName,
-		"operation": operation,
+		"operation": "restart",
 		"iat":       currentTime,
 		"nbf":       currentTime - 5,
 		"exp":       currentTime + 5,
@@ -144,15 +191,28 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send request
-	requestURL := fmt.Sprintf("http://%s:25000/?token=%s", strings.Split(vmConf.TcpSocket, ":")[0], string(communicationToken))
+	// Send request (here we assume that all VMs that are part of a workspace are hosted on the same hypervisor)
+	// Hence we take the IP address of the default vm
+	requestURL := fmt.Sprintf("http://%s:25000/?token=%s",
+		strings.Split(workspaceConfiguration.DefaultVM.TcpSocket, ":")[0],
+		string(communicationToken))
+
+	log.Printf("%s", "Sending restart request: "+requestURL)
+
+	// Evaluate response
 	res, err := http.Get(requestURL)
+
+	// An error occurred -> return error
 	if err != nil {
 		log.Println("Could not make operation request:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	// Here we assume everything worked as expected
 	log.Println("Made operation request, code:", res.StatusCode)
 	body, _ := io.ReadAll(res.Body)
+
+	// This is the success status code, but there is only the error method to report it back
 	http.Error(w, string(body), res.StatusCode)
 }

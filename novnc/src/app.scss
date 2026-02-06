@@ -28,12 +28,7 @@ html {
 }
 
 #alert {
-    display: none;
     margin: 3rem;
-}
-
-#restartModalButton {
-    visibility: hidden;
 }
 
 /* navbar animations */
@@ -67,17 +62,13 @@ html {
     padding: 0.25rem;
 }
 
-button {
-    margin-left: .25rem;
-    margin-right: .25rem;
-}
-
-.btn svg {
-    position: relative;
-    top: -0.125em;
-}
-
 .toast {
     margin-top: 1rem;
     margin-bottom: 1rem;
+}
+
+#app,
+main,
+#screen {
+    height: inherit;
 }

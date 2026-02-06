@@ -11,10 +11,9 @@ RUN go build
 FROM node:22-alpine AS node-builder
 RUN mkdir -p /opt/app
 WORKDIR /opt/app
-COPY novnc/package.json novnc/package-lock.json /opt/app/
+COPY novnc/package.json novnc/package-lock.json .
 RUN npm ci
-COPY novnc/vite.config.js .
-COPY novnc/src ./src/
+COPY novnc .
 RUN ["npm", "run", "build"]
 
 FROM scratch

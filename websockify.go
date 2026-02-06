@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 )
 
@@ -26,6 +27,9 @@ var (
 	// Read from environment
 	jwtKey     string
 	sidecarUrl string
+
+	// Stores currently served websockets
+	servedWebsockets []string
 )
 
 // Initialize the websockify service: parse flags handed over
@@ -63,6 +67,22 @@ func addHeaders(fs http.Handler) http.HandlerFunc {
 	}
 }
 
+// Serve a VM function
+func serveVM(vm VM) {
+	webSocket := vm.WebSocket
+	tcpSocket := vm.TcpSocket
+
+	// Only serve VM if it is not served yet
+	if !slices.Contains(servedWebsockets, webSocket) {
+		log.Printf("Serving WS of %s at %s", tcpSocket, webSocket)
+		handler := &tcpHandler{
+			tcpSocket: tcpSocket,
+		}
+		http.Handle("/"+webSocket, handler)
+		servedWebsockets = append(servedWebsockets, webSocket)
+	}
+}
+
 // Main (entry) function
 func main() {
 	// Parse flags -> calls init function
@@ -97,11 +117,13 @@ func main() {
 
 		// Iterate over forwardings and serve web sockets
 		for _, forwarding := range conf.Forwardings {
-			log.Printf("Serving WS of %s at %s", forwarding.TcpSocket, forwarding.WebSocket)
-			handler := &tcpHandler{
-				tcpSocket: forwarding.TcpSocket,
+			// Check defaultVM
+			serveVM(forwarding.DefaultVM)
+
+			// Check visitable VMs
+			for _, vm := range forwarding.VisitableVMs {
+				serveVM(vm)
 			}
-			http.Handle("/"+forwarding.WebSocket, handler)
 		}
 	} else {
 		// Otherwise serve default websocket at default path /websockify with the read tcp and HTTP socket
@@ -123,8 +145,8 @@ func main() {
 	}
 
 	// Register action handlers for VM actions
-	http.HandleFunc("/action", actionHandler)
-	http.HandleFunc("/actionQuery", actionQuery)
+	http.HandleFunc("/queryWorkspace", queryWorkspace)
+	http.HandleFunc("/performRestart", performRestart)
 
 	// Start HTTP server
 	log.Fatal(http.ListenAndServe(httpSocket, nil))
